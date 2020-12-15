@@ -1,24 +1,25 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class LongNoteController : NoteControllerBase
 {
-    [SerializeField] GameObject objBegin; // 始点部分のGameObject
+    [SerializeField] GameObject objBegin; //　始点部分のGameObject
     [SerializeField] GameObject objTrail; // 軌跡部分のGameObject
-    [SerializeField] GameObject objEnd; // 終点部分のGameObject
+    [SerializeField] GameObject objEnd;  //終点部分のGameObject
 
-    [SerializeField] Color32 processedColorEdges; // 処理中の始点終点の色
-    [SerializeField] Color32 processedColorTrail; // 処理中の軌跡の色
+    [SerializeField] Color32 processedColorEdges; //処理中の始点終点の色
+    [SerializeField] Color32 processedColorTrail; //処理中の軌跡の色
+    [SerializeField] AudioClip clipHit; // 効果音
 
-   void Update()
+    void Update()
     {
         SetTransform();
         CheckMiss();
-    }
+    } 
 
-    // ノーツの座標設定
+    //ノーツの座標設定
     private void SetTransform()
     {
-        // 始点の座標（beatBeginによる指定）
+        //始点の座標(beatBeginによる指定)
         Vector2 positionBegin = new Vector2();
         positionBegin.x = noteProperty.lane - 2;
         positionBegin.y = isProcessed ?
@@ -27,89 +28,110 @@ public class LongNoteController : NoteControllerBase
             PlayerController.ScrollSpeed;
         objBegin.transform.localPosition = positionBegin;
 
-        // 終点の座標（beatEndによる指定）
+        //　終点の座標 (beatEndによる指定)
         Vector2 positionEnd = new Vector2();
         positionEnd.x = noteProperty.lane - 2;
         positionEnd.y =
-        (noteProperty.beatEnd - PlayerController.CurrentBeat) *
-        PlayerController.ScrollSpeed;
+            (noteProperty.beatEnd - PlayerController.CurrentBeat) * 
+            PlayerController.ScrollSpeed;
         objEnd.transform.localPosition = positionEnd;
 
-        // 軌跡部分の座標は始点と終点の中心に設定
+        //軌跡部分の座標は始点と終点の中心に設定
         Vector2 positionTrail = (positionBegin + positionEnd) / 2f;
         objTrail.transform.localPosition = positionTrail;
 
-        // 軌跡部分のY拡大率は終点の始点の座標の差に設定
+        //軌跡部分のy拡大率は終点の始点の座標の差に設定
         Vector2 scale = objTrail.transform.localScale;
         scale.y = positionEnd.y - positionBegin.y;
         objTrail.transform.localScale = scale;
     }
-
-    // 見逃し検出
+    
+    //見逃し検出
     private void CheckMiss()
     {
         // 処理中でない状態で始点が判定ラインを通過し、
-        // BADの判定幅よりも離れるとノーツを削除
-        if (!isProcessed &&
-        noteProperty.secBegin - PlayerController.CurrentSec <
-        -JudgementManager.JudgementWidth[JudgementType.Bad])
-        {
-            // リストから削除
-            PlayerController.ExistingNoteControllers.Remove(
-            GetComponent<NoteControllerBase>()
-            );
-            // GameObject自体も削除
-            Destroy(gameObject);
-        }
-
-        // 処理中の状態で終点が判定ラインを通過し、
-        // BADの判定幅よりも離れるとノーツを削除
+        // Badの判定幅よりも離れるとノーツを削除
         if (isProcessed &&
-        noteProperty.secEnd - PlayerController.CurrentSec <
-        -JudgementManager.JudgementWidth[JudgementType.Bad])
-        {
-            // 処理中フラグを解除
-            isProcessed = false;
-            // リストから削除
-            PlayerController.ExistingNoteControllers.Remove(
-            GetComponent<NoteControllerBase>()
-            );
-            // GameObject自体も削除
-            Destroy(gameObject);
+            noteProperty.secBegin - PlayerController.CurrentSec <
+            -JudgementManager.JudgementWidth[JudgementType.Bad])
+            {
+                //　ミス処理 (2回呼び出す
+                EvaluationManager.OnMiss(); //始点の分
+                EvaluationManager.OnMiss(); //終点の分
+                // リストから削除
+                PlayerController.ExistingNoteControllers.Remove(
+                    GetComponent<NoteControllerBase>()
+                );
+                //GameObject自体も削除
+                Destroy(gameObject);
             }
-        }
 
-            // キーが押された時
-            public override void OnKeyDown(JudgementType judgementType)
+            //　処理中の状態で終点が判定ラインを通過し、
+            //　BADの判定幅よりも離れるとノーツを削除
+            if (isProcessed &&
+            noteProperty.secEnd - PlayerController.CurrentSec <
+            -JudgementManager.JudgementWidth[JudgementType.Bad])
             {
-            // コンソールに判定を表示
-            Debug.Log(judgementType);
+                //　ミス処理
+                EvaluationManager.OnMiss();
+                //　処理中フラグを削除
+                isProcessed = false;
+                //　リストから削除
+                PlayerController.ExistingNoteControllers.Remove(
+                    GetComponent<NoteControllerBase>()
+                );
+                //　GameObjject自体も削除
+                Destroy(gameObject);
+            }
+    }
 
-            // 判定がMissでないとき (BAD以内のとき)
-            if (judgementType != JudgementType.Miss)
-            {
-            // 処理中フラグを付ける
-            isProcessed = true;
-            // 色を変更
+    //　キーが押された時
+    public override void OnKeyDown(JudgementType　judgementType)
+    {
+        //　コンソールに判定を表示
+        Debug.Log(judgementType);
+
+        //　判定がMissでないとき（BAD以内のとき）
+        if (judgementType != JudgementType.Miss)
+        {
+            //ヒット再生
+            EvaluationManager.OnHit(judgementType);
+            //効果音再生
+            AudioSource.PlayClipAtPoint(clipHit, transform.position);
+            //処理中フラグを付ける
+           isProcessed = true;
+            //　色を反抗
             objBegin.GetComponent<SpriteRenderer>().color = processedColorEdges;
             objEnd.GetComponent<SpriteRenderer>().color = processedColorEdges;
             objTrail.GetComponent<SpriteRenderer>().color = processedColorTrail;
-
         }
     }
 
-        // キーが離された時
-        public override void OnKeyUp(JudgementType judgementType)
-        {
-        // コンソールに判定を表示
-        Debug.Log(judgementType);
-        // 処理中フラグを解除
-        isProcessed = false;
-        //リストから削除
+    //  キーが離された時
+     public override void OnKeyUp(JudgementType judgementType)
+     {
+         //　判定がBAD以内の時
+         if (judgementType != JudgementType.Miss)
+         {
+         //　ヒット処理
+         EvaluationManager.OnHit(judgementType);
+         }
+         //　判定がMissの時(Miss)
+         else{
+             //ミス処理
+             EvaluationManager.OnMiss();
+             }
+         //　コンソールに判定を表示
+         Debug.Log(judgementType);
+        //効果音再生
+        AudioSource.PlayClipAtPoint(clipHit, transform.position);
+         //  処理中フラグを解除
+         isProcessed = false;
+         //　リストから削除
         PlayerController.ExistingNoteControllers.Remove(
-        GetComponent<NoteControllerBase>()
+            GetComponent<NoteControllerBase>()
         );
-        // GameObject自体も削除
+        //  GameObject自体も削除
         Destroy(gameObject);
-    }
+     }
 }

@@ -1,18 +1,17 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class NoteProperty
+public class NoteProperty : MonoBehaviour
 {
-    public float beatBegin; // 始点が判定ラインと重なるbeat
+    public float beatBegin; //始点が判定ラインと重なるbeat
     public float beatEnd; // 終点が判定ラインと重なるbeat
     public float secBegin; // 始点が判定ラインと重なるsec
     public float secEnd; // 終点が判定ラインと重なるsec
+    public int lane; //レーン
+    public NoteType noteType; //ノーツ種別
 
-    public int lane; // レーン
-    public NoteType noteType; // ノーツ種別
-
-    // コンストラクタ
+    //コンストラクタ
     public NoteProperty(float beatBegin, float beatEnd, int lane, NoteType noteType)
     {
         this.beatBegin = beatBegin;
@@ -20,12 +19,10 @@ public class NoteProperty
         this.lane = lane;
         this.noteType = noteType;
     }
- }
-
- public enum NoteType
-{
- Single, // シングルノーツ
- Long // ロングノーツ
 }
 
-
+public enum NoteType
+{
+    Single, //シングルノーツ
+    Long //ロングノーツ
+}
